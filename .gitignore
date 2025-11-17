@@ -1,0 +1,64 @@
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Python caches & build (some you already have) ---
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+*.egg-info/
+pip-wheel-metadata/
+
+# --- Virtual envs ---
+.venv/
+venv/
+env/
+
+# --- Tool caches ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.tox/
+.hypothesis/
+.pyre/
+.pytype/
+
+# --- Coverage & test outputs ---
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.junit/
+
+# --- Logs & misc runtime files ---
+*.log
+*.tmp
+*.bak
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- Editors/IDEs ---
+.vscode/
+.idea/
+
+# --- Environment & secrets ---
+.env
+.env.*
+*.env
+*.pem
+*.key
+secrets*.json
+
+# --- Project-specific artifacts ---
+downloads/
+
+# Ignore data and outputs
+data/raw_pdfs/
+data/extracted_text/
+outputs/
+
+

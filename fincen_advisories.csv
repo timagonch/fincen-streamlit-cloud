@@ -1,0 +1,161 @@
+fincen_id,title,date,pdf_filename,pdf_url,publication_type
+FIN-2025-A003,FinCEN Advisory FIN-2025-A003,08/28/2025,FinCEN-Advisory-CMLN-508.pdf,https://www.fincen.gov/system/files/2025-08/FinCEN-Advisory-CMLN-508.pdf,advisory
+FIN-2025-A002,FinCEN Advisory FIN-2025-A002,06/06/2025,FinCEN-Advisory-Illicit-Oil-Smuggling-508.pdf,https://www.fincen.gov/system/files/FinCEN-Advisory-Illicit-Oil-Smuggling-508.pdf,advisory
+FIN-2025-A001,FinCEN Advisory FIN-2025-A001,04/01/2025,FinCEN-Advisory-ISIS-508C.pdf,https://www.fincen.gov/system/files/advisory/2025-04-01/FinCEN-Advisory-ISIS-508C.pdf,advisory
+FIN-2024-A002,FinCEN Advisory FIN-2024-A002,06/20/2024,FinCEN-Supplemental-Advisory-on-Fentanyl-508C.pdf,https://www.fincen.gov/system/files/advisory/2024-06-20/FinCEN-Supplemental-Advisory-on-Fentanyl-508C.pdf,advisory
+FIN-2024-A001,FinCEN Advisory FIN-2024-A001,05/08/2024,FinCEN-Advisory-Iran-Backed-TF-508C.pdf,https://www.fincen.gov/system/files/advisory/2024-05-07/FinCEN-Advisory-Iran-Backed-TF-508C.pdf,advisory
+FIN-2022-A002,FinCEN Advisory FIN-2022-A002,06/15/2022,FinCEN%20Advisory%20Elder%20Financial%20Exploitation%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2022-06-15/FinCEN%20Advisory%20Elder%20Financial%20Exploitation%20FINAL%20508.pdf,advisory
+FIN-2022-A001,FinCEN Advisory FIN-2022-A001,04/14/2022,FinCEN%20Advisory%20Corruption%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2022-04-14/FinCEN%20Advisory%20Corruption%20FINAL%20508.pdf,advisory
+FIN-2021-A004,FinCEN Advisory FIN-2021-A004,11/08/2021,FinCEN%20Ransomware%20Advisory_FINAL_508_.pdf,https://www.fincen.gov/system/files/advisory/2021-11-08/FinCEN%20Ransomware%20Advisory_FINAL_508_.pdf,advisory
+FIN-2021-A003,FinCEN Advisory FIN-2021-A003,03/11/2021,FATF%20February%202021%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2021-03-11/FATF%20February%202021%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2021-A002,FinCEN Advisory FIN-2021-A002,02/24/2021,Advisory%20EIP%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2021-02-25/Advisory%20EIP%20FINAL%20508.pdf,advisory
+FIN-2021-A001,FinCEN Advisory FIN-2021-A001,02/02/2021,COVID-19%20Health%20Care%20508%20Final.pdf,https://www.fincen.gov/system/files/advisory/2021-02-02/COVID-19%20Health%20Care%20508%20Final.pdf,advisory
+FIN-2020-A009,FinCEN Advisory FIN-2020-A009,11/06/2020,FATF%20October%202020%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2020-11-06/FATF%20October%202020%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2020-A008,FinCEN Advisory FIN-2020-A008,10/15/2020,Advisory%20Human%20Trafficking%20508%20FINAL_0.pdf,https://www.fincen.gov/system/files/advisory/2020-10-15/Advisory%20Human%20Trafficking%20508%20FINAL_0.pdf,advisory
+FIN-2020-A007,FinCEN Advisory FIN-2020-A007,10/13/2020,Advisory%20Unemployment%20Insurance%20COVID%2019%20508%20Final.pdf,https://www.fincen.gov/system/files/advisory/2020-10-13/Advisory%20Unemployment%20Insurance%20COVID%2019%20508%20Final.pdf,advisory
+FIN-2020-A006,FinCEN Advisory FIN-2020-A006,10/01/2020,Advisory%20Ransomware%20FINAL%20508_2020%20rescinded.pdf,https://www.fincen.gov/system/files/advisory/2021-11-08/Advisory%20Ransomware%20FINAL%20508_2020%20rescinded.pdf,advisory
+FIN-2020-A005,FinCEN Advisory FIN-2020-A005,07/30/2020,FinCEN%20Advisory%20Covid%20Cybercrime%20508%20FINAL.pdf,https://www.fincen.gov/system/files/advisory/2020-07-30/FinCEN%20Advisory%20Covid%20Cybercrime%20508%20FINAL.pdf,advisory
+FIN-2020-A004,FinCEN Advisory FIN-2020-A004,07/14/2020,FATF_June_2020_Advisory_FINAL_508.pdf,https://www.fincen.gov/system/files/advisory/2020-07-14/FATF_June_2020_Advisory_FINAL_508.pdf,advisory
+FIN-2020-A003,FinCEN Advisory FIN-2020-A003,07/07/2020,Advisory_%20Imposter_and_Money_Mule_COVID_19_508_FINAL.pdf,https://www.fincen.gov/system/files/advisory/2020-07-07/Advisory_%20Imposter_and_Money_Mule_COVID_19_508_FINAL.pdf,advisory
+FIN-2020-A002,FinCEN Advisory FIN-2020-A002,05/18/2020,Advisory%20Medical%20Fraud%20Covid%2019%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2020-05-18/Advisory%20Medical%20Fraud%20Covid%2019%20FINAL%20508.pdf,advisory
+FIN-2020-A001,FinCEN Advisory FIN-2020-A001,03/26/2020,FATF%20February%202020%20Advisory%20FINAL%20508_0.pdf,https://www.fincen.gov/system/files/advisory/2020-03-25/FATF%20February%202020%20Advisory%20FINAL%20508_0.pdf,advisory
+FIN-2019-A007,FinCEN Advisory FIN-2019-A007,11/12/2019,FATF%20Advisory%20October%202019%20FINAL_508.pdf,https://www.fincen.gov/system/files/advisory/2019-11-12/FATF%20Advisory%20October%202019%20FINAL_508.pdf,advisory
+FIN-2019-A006,FinCEN Advisory FIN-2019-A006,08/21/2019,Fentanyl%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2019-08-21/Fentanyl%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2019-A005,FinCEN Advisory FIN-2019-A005,07/16/2019,Updated%20BEC%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2019-07-16/Updated%20BEC%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2019-A004,FinCEN Advisory FIN-2019-A004,07/12/2019,FATF%20Advisory%20June%202019%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2019-07-12/FATF%20Advisory%20June%202019%20FINAL%20508.pdf,advisory
+FIN-2019-A003,FinCEN Advisory FIN-2019-A003,05/09/2019,FinCEN%20Advisory%20CVC%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2019-05-10/FinCEN%20Advisory%20CVC%20FINAL%20508.pdf,advisory
+FIN-2019-A002,FinCEN Advisory FIN-2019-A002,05/03/2019,Venezuela%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2019-05-08/Venezuela%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2019-A001,FinCEN Advisory FIN-2019-A001,03/08/2019,FAFT_Advisory_March_final_508.pdf,https://www.fincen.gov/system/files/advisory/2019-03-08/FAFT_Advisory_March_final_508.pdf,advisory
+FIN-2018-A007,FinCEN Advisory FIN-2018-A007,10/31/2018,FATF%20Advisory%20Oct_FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2018-10-31/FATF%20Advisory%20Oct_FINAL%20508.pdf,advisory
+FIN-2018-A006,FinCEN Advisory FIN-2018-A006,10/11/2018,Iran%20Advisory%20FINAL%20508.pdf,https://www.fincen.gov/system/files/advisory/2018-10-12/Iran%20Advisory%20FINAL%20508.pdf,advisory
+FIN-2018-A005,FinCEN Advisory FIN-2018-A005,10/04/2018,Nicaragua_Advisory_FINAL_508_0.pdf,https://www.fincen.gov/system/files/advisory/2018-10-04/Nicaragua_Advisory_FINAL_508_0.pdf,advisory
+FIN-2018-A004,FinCEN Advisory FIN-2018-A004,09/21/2018,FATF_Advisory_September_2018_FINAL_508_0.pdf,https://www.fincen.gov/system/files/advisory/2018-09-21/FATF_Advisory_September_2018_FINAL_508_0.pdf,advisory
+FIN-2018-A003,FinCEN Advisory FIN-2018-A003,06/12/2018,PEP%20Facilitator%20Advisory_FINAL%20508%20updated.pdf,https://www.fincen.gov/system/files/advisory/2018-07-03/PEP%20Facilitator%20Advisory_FINAL%20508%20updated.pdf,advisory
+FIN-2018-A002,FinCEN Advisory FIN-2018-A002,04/27/2018,FinCEN%20FATF%20Advisory%20FIN-2018-A002%20%28508%29.pdf,https://www.fincen.gov/system/files/advisory/2018-04-27/FinCEN%20FATF%20Advisory%20FIN-2018-A002%20%28508%29.pdf,advisory
+FIN-2018-A001,FinCEN Advisory FIN-2018-A001,02/09/2018,FATF%20Advisory_FIN-2018-001_0.pdf,https://www.fincen.gov/system/files/advisory/2018-02-12/FATF%20Advisory_FIN-2018-001_0.pdf,advisory
+FIN-2017-A008,FinCEN Advisory FIN-2017-A008,11/02/2017,DPRK%20Advisory%20FINAL%20508%20C.pdf,https://www.fincen.gov/system/files/advisory/2017-11-02/DPRK%20Advisory%20FINAL%20508%20C.pdf,advisory
+FIN-2017-A007,FinCEN Advisory FIN-2017-A007,10/31/2017,FinCEN%20Advisory%20FIN-2017-A007-508%20Compliant.pdf,https://www.fincen.gov/system/files/advisory/2017-10-31/FinCEN%20Advisory%20FIN-2017-A007-508%20Compliant.pdf,advisory
+FIN-2017-A007,FinCEN Advisory FIN-2017-A007,09/22/2017,DPRK%20Financing%20Advisory%20%28v16%29%2Blanguage2.pdf,https://www.fincen.gov/system/files/advisory/2017-09-22/DPRK%20Financing%20Advisory%20%28v16%29%2Blanguage2.pdf,advisory
+FIN-2017-A006,FinCEN Advisory FIN-2017-A006,09/20/2017,FinCEN%20Advisory%20FIN-2017-A006-508%20Compliant.pdf,https://www.fincen.gov/system/files/advisory/2017-09-20/FinCEN%20Advisory%20FIN-2017-A006-508%20Compliant.pdf,advisory
+FIN-2017-A005,FinCEN Advisory FIN-2017-A005,09/15/2017,FinCEN%20FATF%20Advisory-FIN-2017-A005_0.pdf,https://www.fincen.gov/system/files/advisory/2017-09-15/FinCEN%20FATF%20Advisory-FIN-2017-A005_0.pdf,advisory
+FIN-2017-A004,FinCEN Advisory FIN-2017-A004,09/06/2017,South%20Sudan%20Advisory_09-06-2017_0.pdf,https://www.fincen.gov/system/files/advisory/2017-09-06/South%20Sudan%20Advisory_09-06-2017_0.pdf,advisory
+FIN-2017-A003,FinCEN Advisory - FIN-2017-A003,08/22/2017,Risk%20in%20Real%20Estate%20Advisory_FINAL%20508%20Tuesday%20%28002%29.pdf,https://www.fincen.gov/system/files/advisory/2017-08-22/Risk%20in%20Real%20Estate%20Advisory_FINAL%20508%20Tuesday%20%28002%29.pdf,advisory
+FIN-2017-A002,FinCEN Advisory - FIN-2017-A002,04/05/2017,FinCEN%20FATF%20Advisory%20%28February%202017%29.pdf,https://www.fincen.gov/system/files/advisory/2017-04-05/FinCEN%20FATF%20Advisory%20%28February%202017%29.pdf,advisory
+FIN-2017-A001,FinCEN Advisory – FIN-2017-A001,01/19/2017,FinCEN%20FATF%20Advisory%20Jan%202017-508%20Compliant_0.pdf,https://www.fincen.gov/system/files/advisory/2017-01-18/FinCEN%20FATF%20Advisory%20Jan%202017-508%20Compliant_0.pdf,advisory
+FIN-2016-A005,FinCEN Advisory - FIN-2016-A005,10/25/2016,Cyber%20Threats%20Advisory%20-%20FINAL%20508_2.pdf,https://www.fincen.gov/system/files/advisory/2016-10-25/Cyber%20Threats%20Advisory%20-%20FINAL%20508_2.pdf,advisory
+FIN-2016-A004,FinCEN Advisory - FIN-2016-A004,09/07/2016,FIN-2016-A004.pdf,https://www.fincen.gov/system/files/advisory/2016-09-08/FIN-2016-A004.pdf,advisory
+FIN-2016-A003,FinCEN Advisory - FIN-2016-A003,09/06/2016,FIN-2016-A003.pdf,https://www.fincen.gov/system/files/advisory/2016-09-09/FIN-2016-A003.pdf,advisory
+FIN-2016-A002,FinCEN Advisory - FIN-2016-A002,03/21/2016,FIN-2016-A002.pdf,https://www.fincen.gov/system/files/advisory/FIN-2016-A002.pdf,advisory
+FIN-2016-A001,FinCEN Advisory – FIN-2016-A001,01/19/2016,FIN-2016-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2016-A001.pdf,advisory
+FIN-2015-A002,FinCEN Advisory – FIN-2015-A002,07/20/2015,FIN-2015-A002.pdf,https://www.fincen.gov/system/files/advisory/FIN-2015-A002.pdf,advisory
+FIN-2015-A001,FinCEN Advisory – FIN-2015-A001,03/16/2015,FIN-2015-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2015-A001.pdf,advisory
+FIN-2014-A009,FinCEN Advisory – FIN-2014-A009,11/12/2014,FIN-2014-A009.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A009.pdf,advisory
+FIN-2014-A008,FinCEN Advisory – FIN-2014-A008,09/11/2014,FIN-2014-A008.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A008.pdf,advisory
+FIN-2014-A007,FinCEN Advisory – FIN-2014-A007,08/11/2014,FIN-2014-A007.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A007.pdf,advisory
+FIN-2014-A006,FinCEN Advisory – FIN-2014-A006,08/05/2014,FIN-2014-A006.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A006.pdf,advisory
+FIN-2014-A005,FinCEN Advisory–FIN-2014-A005,05/28/2014,FIN-2014-A005.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A005.pdf,advisory
+FIN-2014-A004,FinCEN Advisory – FIN-2014-A004,05/20/2014,FIN-2014-A004.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A004.pdf,advisory
+FIN-2014-A003,FinCEN Advisory – FIN-2014-A003,03/25/2014,FIN-2014-A003.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A003.pdf,advisory
+FIN-2014-A002,FinCEN Advisory – FIN-2014-A002,03/06/2014,FIN-2014-A002.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A002.pdf,advisory
+FIN-2014-A001,FinCEN Advisory - FIN-2014-A001,02/25/2014,FIN-2014-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2014-A001.pdf,advisory
+FIN-2013-A008,FinCEN Advisory - FIN-2013-A008,12/04/2013,FIN-2013-A008.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A008.pdf,advisory
+FIN-2013-A007,FinCEN Advisory - FIN-2013-A007,09/27/2013,FIN-2013-A007.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A007.pdf,advisory
+FIN-2013-A006,FinCEN Advisory – FIN-2013-A006,09/17/2013,FIN-2013-A006.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A006.pdf,advisory
+FIN-2013-A005,FinCEN Advisory – FIN-2013-A005,07/01/2013,FIN-2013-A005.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A005.pdf,advisory
+FIN-2013-A003,FinCEN Advisory – FIN-2013-A003,04/24/2013,FIN-2013-A003.pdf,https://www.fincen.gov/system/files/advisory/2016-06-28/FIN-2013-A003.pdf,advisory
+FIN-2013-A004,FinCEN Advisory - FIN-2013-A004,04/23/2013,FIN-2013-A004.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A004.pdf,advisory
+FIN-2013-A002,FinCEN Advisory – FIN-2013-A002,04/15/2013,FIN-2013-A002.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A002.pdf,advisory
+FIN-2013-A001,FinCEN Advisory – FIN-2013-A001,02/26/2013,FIN-2013-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2013-A001.pdf,advisory
+FIN-2012-A012,FinCEN Advisory – FIN-2012-A012,11/21/2012,FIN-2012-A012.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A012.pdf,advisory
+FIN-2012-A011,FinCEN Advisory – FIN-2012-A011,11/20/2012,FIN-2012-A011.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A011.pdf,advisory
+FIN-2012-A010,FinCEN Advisory – FIN-2012-A010,10/22/2012,FIN-2012-A010.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A010.pdf,advisory
+FIN-2012-A009,FinCEN Advisory – FIN-2012-A009,08/16/2012,FIN-2012-A009.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A009.pdf,advisory
+FIN-2012-A008,FinCEN Advisory – FIN-2012-A008,07/20/2012,FIN-2012-A008.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A008.pdf,advisory
+FIN-2012-A007,FinCEN Advisory – FIN-2012-A007,07/19/2012,FIN-2012-A007.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A007.pdf,advisory
+FIN-2012-A006,FinCEN Advisory – FIN-2012-A006,07/18/2012,FIN-2012-A006.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A006.pdf,advisory
+FIN-2012-A005,FinCEN Advisory – FIN-2012-A005,03/30/2012,FIN-2012-A005.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A005.pdf,advisory
+FIN-2012-A004,FinCEN Advisory – FIN-2012-A004,03/07/2012,FIN-2012-A004.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A004.pdf,advisory
+FIN-2012-A003,FinCEN Advisory – FIN-2012-A003,03/06/2012,FIN-2012-A003.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A003.pdf,advisory
+FIN-2012-A002,FinCEN Advisory – FIN-2012-A002,03/02/2012,FIN-2012-A002.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A002.pdf,advisory
+FIN-2012-A001,FinCEN Advisory – FIN-2012-A001,02/15/2012,FIN-2012-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2012-A001.pdf,advisory
+FIN-2011-A016,FinCEN Advisory – FIN-2011-A016,12/19/2011,FIN-2011-A016.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A016.pdf,advisory
+FIN-2011-A014,FinCEN Advisory – FIN-2011-A014,11/15/2011,FIN-2011-A014.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A014.pdf,advisory
+FIN-2011-A015,FinCEN Advisory – FIN-2011-A015,11/15/2011,FIN-2011-A015.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A015.pdf,advisory
+FIN-2011-A013,FinCEN Advisory – FIN-2011-A013,08/10/2011,FIN-2011-A013.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A013.pdf,advisory
+FIN-2011-A012,FinCEN Advisory - FIN-2011-A012,07/13/2011,FIN-2011-A012.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A012.pdf,advisory
+FIN-2011-A011,FinCEN Advisory – FIN-2011-A011,07/12/2011,FIN-2011-A011.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A011.pdf,advisory
+FIN-2011-A010,FinCEN Advisory – FIN-2011-A010,07/08/2011,FIN-2011-A010.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A010.pdf,advisory
+FIN-2011-A009,FinCEN Advisory – FIN-2011-A009,04/21/2011,FIN-2011-A009.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A009.pdf,advisory
+FIN-2011-A008,FinCEN Advisory – FIN-2011-A008,04/15/2011,FIN-2011-A008.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A008.pdf,advisory
+FIN-2011-A007,FinCEN Advisory – FIN-2011-A007,03/30/2011,FIN-2011-A007.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A007.pdf,advisory
+FIN-2011-A006,FinCEN Advisory - FIN-2011-A006,03/21/2011,FIN-2011-A006.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A006.pdf,advisory
+FIN-2011-A005,FinCEN Advisory – FIN-2011-A005,03/20/2011,FIN-2011-A005.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A005.pdf,advisory
+FIN-2011-A004,FinCEN Advisory – FIN-2011-A004,02/24/2011,FIN-2011-A004.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A004.pdf,advisory
+FIN-2011-A003,FinCEN Advisory - FIN-2011-A003,02/22/2011,fin-2011-a003.pdf,https://www.fincen.gov/system/files/advisory/fin-2011-a003.pdf,advisory
+FIN-2011-A002,FinCEN Advisory - FIN-2011-A002,02/16/2011,fin-2011-a002.pdf,https://www.fincen.gov/system/files/advisory/fin-2011-a002.pdf,advisory
+FIN-2011-A001,FinCEN Advisory – FIN-2011-A001,01/20/2011,FIN-2011-A001.pdf,https://www.fincen.gov/system/files/advisory/FIN-2011-A001.pdf,advisory
+FIN-2010-A014,FinCEN Advisory – FIN-2010-A014,11/23/2010,FIN-2010-A014.pdf,https://www.fincen.gov/system/files/advisory/FIN-2010-A014.pdf,advisory
+FIN-2010-A013,FinCEN Advisory – FIN-2010-A013,11/20/2010,FIN-2010-A013.pdf,https://www.fincen.gov/system/files/advisory/FIN-2010-A013.pdf,advisory
+FIN-2010-A012,FinCEN Advisory - FIN-2010-A012,11/20/2010,FIN-2010-A012.pdf,https://www.fincen.gov/system/files/advisory/FIN-2010-A012.pdf,advisory
+FIN-2010-A011,FinCEN Advisory – FIN-2010-A011,09/01/2010,FIN-2010-A11-updated_508.pdf,https://www.fincen.gov/system/files/advisory/2022-07-05/FIN-2010-A11-updated_508.pdf,advisory
+FIN-2010-A010,FinCEN Advisory – FIN-2010-A010,07/17/2010,FIN-2010-A010.pdf,https://www.fincen.gov/system/files/advisory/FIN-2010-A010.pdf,advisory
+FIN-2010-A009,FinCEN Advisory – FIN-2010-A009,07/16/2010,FIN-2010-A009.pdf,https://www.fincen.gov/system/files/advisory/FIN-2010-A009.pdf,advisory
+FIN-2010-A009,FinCEN Advisory – FIN-2010-A009,07/16/2010,FIN-2010-A009.pdf,https://www.fincen.gov/system/files/advisory/2016-07-13/FIN-2010-A009.pdf,advisory
+FIN-2010-A010,FinCEN Advisory – FIN-2010-A010,07/16/2010,FIN-2010-A010.pdf,https://www.fincen.gov/system/files/advisory/2016-07-13/FIN-2010-A010.pdf,advisory
+FIN-2010-A008,FinCEN Advisory - FIN-2010-A008,06/22/2010,fin-2010-a008.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a008.pdf,advisory
+FIN-2010-A007,FinCEN Advisory – FIN-2010-A007,06/21/2010,fin-2010-a007.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a007.pdf,advisory
+FIN-2010-A006,FinCEN Advisory – FIN-2010-A006,06/17/2010,fin-2010-a006.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a006.pdf,advisory
+FIN-2010-A005,FinCEN Advisory - FIN-2010-A005,04/27/2010,fin-2010-a005.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a005.pdf,advisory
+FIN-2010-A004,FinCEN Advisory – FIN-2010-A004,03/29/2010,fin-2010-a004.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a004.pdf,advisory
+FIN-2010-A003,FinCEN Advisory - FIN-2010-A003,03/18/2010,fin-2010-a003.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a003.pdf,advisory
+FIN-2010-A002,FinCEN Advisory - FIN-2010-A002,03/18/2010,fin-2010-a002.pdf,https://www.fincen.gov/system/files/advisory/2016-07-13/fin-2010-a002.pdf,advisory
+FIN-2010-A001,FinCEN Advisory – FIN-2010-A001,02/18/2010,fin-2010-a001.pdf,https://www.fincen.gov/system/files/advisory/fin-2010-a001.pdf,advisory
+FIN-2009-A007,FinCEN Advisory – FIN-2009-A007,10/29/2009,fin-2009-a007.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a007.pdf,advisory
+FIN-2009-A006,FinCEN Advisory – FIN-2009-A006,10/14/2009,fin-2009-a006.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a006.pdf,advisory
+FIN-2009-A005,FinCEN Advisory – FIN-2009-A005,07/23/2009,fin-2009-a005.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a005.pdf,advisory
+FIN-2009-A004,FinCEN Advisory – FIN-2009-A004,07/10/2009,fin-2009-a004.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a004.pdf,advisory
+FIN-2009-A003,FinCEN Advisory – FIN-2009-A003,07/01/2009,fin-2009-a003.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a003.pdf,advisory
+FIN-2009-A002,FinCEN Advisory – FIN-2009-A002,06/18/2009,fin-2009-a002.pdf,https://www.fincen.gov/system/files/advisory/fin-2009-a002.pdf,advisory
+FIN-2009-G002,FinCEN Guidance – FIN-2009-G002,06/16/2009,fin-2009-g002.pdf,https://www.fincen.gov/system/files/guidance/fin-2009-g002.pdf,advisory
+FIN-2009-G001,FinCEN Guidance– FIN-2009-G001,04/27/2009,fin-2009-g001.pdf,https://www.fincen.gov/system/files/guidance/fin-2009-g001.pdf,advisory
+FIN-2009-A001,FinCEN Advisory – FIN-2009-A001,04/06/2009,fin-2009-a001.pdf,https://www.fincen.gov/system/files/guidance/fin-2009-a001.pdf,advisory
+FIN-2008-G008,FinCEN Guidance-FIN-2008-G008,09/10/2008,fin-2008-g008.pdf,https://www.fincen.gov/system/files/guidance/fin-2008-g008.pdf,advisory
+FIN-2008-G007,FinCEN Guidance-FIN-2008-G007,07/31/2008,fin-2008-g007.pdf,https://www.fincen.gov/system/files/guidance/fin-2008-g007.pdf,advisory
+FIN-2008-A005,FinCEN Advisory – FIN-2008-A005,04/28/2008,fin-2008-a005.pdf,https://www.fincen.gov/system/files/advisory/fin-2008-a005.pdf,advisory
+FIN-2008-G005,FinCEN Guidance-FIN-2008-G005,04/17/2008,fin-2008-g005.pdf,https://www.fincen.gov/system/files/guidance/fin-2008-g005.pdf,advisory
+FIN-2008-G004,FinCEN Guidance-FIN-2008-G004(Replaces 10/31/05 FAQs),03/20/2008,fin-2008-g004.pdf,https://www.fincen.gov/system/files/guidance/fin-2008-g004.pdf,advisory
+FIN-2008-A002,FinCEN Advisory – FIN-2008-A002,03/20/2008,fin-2008-a002.pdf,https://www.fincen.gov/system/files/advisory/fin-2008-a002.pdf,advisory
+FIN-2008-A003,FinCEN Advisory – FIN-2008-A003,03/20/2008,fin-2008-a003.pdf,https://www.fincen.gov/system/files/advisory/fin-2008-a003.pdf,advisory
+FIN-2007-A001,FinCEN Advisory – FIN-2007-A001,10/01/2007,guidance_fi_increasing_mlt_iranian.pdf,https://www.fincen.gov/system/files/guidance/guidance_fi_increasing_mlt_iranian.pdf,advisory
+,FinCEN Advisory – Issue 40,12/01/2005,advisory.pdf,https://www.fincen.gov/system/files/guidance/advisory.pdf,advisory
+,Interagency Advisory - Issue 39,04/01/2005,faqsfinalciprule.pdf,https://www.fincen.gov/system/files/guidance/faqsfinalciprule.pdf,advisory
+,FinCEN Advisory - Issue 34,12/01/2003,advis34.pdf,https://www.fincen.gov/system/files/advisory/advis34.pdf,advisory
+,FinCEN Advisory - Issue 33,03/01/2003,advis33.pdf,https://www.fincen.gov/system/files/advisory/advis33.pdf,advisory
+,FinCEN Advisory - Issue 31,04/01/2002,advis31.pdf,https://www.fincen.gov/system/files/advisory/advis31.pdf,advisory
+,FinCEN Advisory - Issue 30,04/01/2002,advis30.pdf,https://www.fincen.gov/system/files/advisory/advis30.pdf,advisory
+,FinCEN Advisory - Issue 28,04/01/2002,advis28.pdf,https://www.fincen.gov/system/files/advisory/advis28.pdf,advisory
+,FinCEN Advisory - Issue 32,04/01/2002,advis32.pdf,https://www.fincen.gov/system/files/advisory/advis32.pdf,advisory
+,FinCEN Advisory - Issue 29,04/01/2002,advis29.pdf,https://www.fincen.gov/system/files/advisory/advis29.pdf,advisory
+,Advisory Updated - Issue 21A,01/01/2002,advis21a.pdf,https://www.fincen.gov/system/files/advisory/advis21a.pdf,advisory
+,FinCEN Advisory - Issue 26,07/01/2000,advis26.pdf,https://www.fincen.gov/system/files/advisory/advis26.pdf,advisory
+,FinCEN Advisory - Issue 17,07/01/2000,advis17.pdf,https://www.fincen.gov/system/files/advisory/advis17.pdf,advisory
+,FinCEN Advisory - Issue 23,07/01/2000,advis23.pdf,https://www.fincen.gov/system/files/advisory/advis23.pdf,advisory
+,FinCEN Advisory - Issue 14,07/01/2000,advis14.pdf,https://www.fincen.gov/system/files/advisory/advis14.pdf,advisory
+,FinCEN Advisory - Issue 19,07/01/2000,advis19.pdf,https://www.fincen.gov/system/files/advisory/advis19.pdf,advisory
+,FinCEN Advisory - Issue 25,07/01/2000,advis25.pdf,https://www.fincen.gov/system/files/advisory/advis25.pdf,advisory
+,FinCEN Advisory - Issue 16,07/01/2000,advis16.pdf,https://www.fincen.gov/system/files/advisory/advis16.pdf,advisory
+,FinCEN Advisory - Issue 21,07/01/2000,advis21.pdf,https://www.fincen.gov/system/files/advisory/advis21.pdf,advisory
+,FinCEN Advisory - Issue 22,07/01/2000,advis22.pdf,https://www.fincen.gov/system/files/advisory/advis22.pdf,advisory
+,FinCEN Advisory - Issue 13,07/01/2000,advis13.pdf,https://www.fincen.gov/system/files/advisory/advis13.pdf,advisory
+,FinCEN Advisory - Issue 27,07/01/2000,advis27.pdf,https://www.fincen.gov/system/files/advisory/advis27.pdf,advisory
+,FinCEN Advisory - Issue 18,07/01/2000,advis18.pdf,https://www.fincen.gov/system/files/advisory/advis18.pdf,advisory
+,FinCEN Advisory - Issue 24,07/01/2000,advis24.pdf,https://www.fincen.gov/system/files/advisory/advis24.pdf,advisory
+,FinCEN Advisory - Issue 12,06/01/1999,advis12.pdf,https://www.fincen.gov/system/files/advisory/advis12.pdf,advisory
+,FinCEN Advisory - Issue 11,04/01/1999,advis11.pdf,https://www.fincen.gov/system/files/advisory/advis11.pdf,advisory
+,FinCEN Advisory - Issue 9,11/01/1997,advisu9.pdf,https://www.fincen.gov/system/files/advisory/advisu9.pdf,advisory
+,FinCEN Advisory - Issue 7,01/01/1997,advissu7.pdf,https://www.fincen.gov/system/files/advisory/advissu7.pdf,advisory
+,FinCEN Advisory - Issue 6,10/01/1996,advissu6.pdf,https://www.fincen.gov/system/files/advisory/advissu6.pdf,advisory
+,FinCEN Advisory - Issue 4,08/01/1996,advissu4.pdf,https://www.fincen.gov/system/files/advisory/advissu4.pdf,advisory
+,FinCEN Advisory - Issue 3,06/01/1996,advissu3.pdf,https://www.fincen.gov/system/files/advisory/advissu3.pdf,advisory
+,FinCEN Advisory - Issue 2,03/01/1996,advis2.pdf,https://www.fincen.gov/system/files/advisory/advis2.pdf,advisory
+,FinCEN Advisory - Issue 1,03/01/1996,advissu1.pdf,https://www.fincen.gov/system/files/advisory/advissu1.pdf,advisory
