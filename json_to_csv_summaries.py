@@ -4,8 +4,8 @@ from pathlib import Path
 
 # ---- CONFIG ----
 # This is your LLM output file that includes advisories, alerts, and notices
-INPUT_JSON = Path("fincen_summaries.json")     # <-- use your exact filename here
-OUTPUT_CSV = Path("fincen_advisory_summaries.csv")  # name is fine even though it has all 3 types
+INPUT_JSON = Path("fincen_summaries.json")     # can be overridden if needed
+OUTPUT_CSV = Path("fincen_summaries.csv")      # flat, dashboard-friendly CSV
 
 
 def join_list(value):
@@ -18,69 +18,134 @@ def join_list(value):
     return value
 
 
-def main():
-    if not INPUT_JSON.exists():
-        raise FileNotFoundError(f"Could not find {INPUT_JSON.resolve()}")
+def flatten_specific_schemes(schemes):
+    """
+    Flatten the list of scheme dicts into two representations:
+      - human_readable: 'family: label' pipe-separated
+      - json_str: full JSON string for drill-down use
 
-    with open(INPUT_JSON, "r", encoding="utf-8") as f:
+    schemes is expected to look like:
+      [
+        {"family": "human_trafficking", "label": "...", "notes": "..."},
+        ...
+      ]
+    """
+    if not schemes:
+        return "", "[]"
+
+    if not isinstance(schemes, list):
+        return str(schemes), json.dumps(schemes, ensure_ascii=False)
+
+    human_bits = []
+    for s in schemes:
+        if not isinstance(s, dict):
+            human_bits.append(str(s))
+            continue
+        family = s.get("family") or ""
+        label = s.get("label") or ""
+        if family and label:
+            human_bits.append(f"{family}: {label}")
+        elif label:
+            human_bits.append(label)
+        elif family:
+            human_bits.append(family)
+
+    human_readable = " | ".join(human_bits)
+    json_str = json.dumps(schemes, ensure_ascii=False)
+    return human_readable, json_str
+
+
+def load_summaries(path: Path):
+    """
+    Load summaries JSON. We support two shapes:
+
+    1) Dict keyed by article_name:
+         {
+           "Advisory%20EIP%20FINAL%20508.pdf": {...},
+           ...
+         }
+
+    2) List of summary dicts:
+         [
+           {"article_name": "...", ...},
+           ...
+         ]
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Could not find {path.resolve()}")
+
+    with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
     rows = []
 
-    # Expected structure:
-    # {
-    #   "advis11.pdf": { ... },
-    #   "FIN-2024-NTC1.pdf": { ... },
-    #   "alert123.pdf": { ... },
-    #   ...
-    # }
-    if not isinstance(data, dict):
-        raise ValueError(
-            "Expected top-level JSON to be a dict mapping 'pdf_name' -> payload dict."
+    if isinstance(data, dict):
+        # Newer shape: keyed by article_name
+        for article_name, rec in data.items():
+            if isinstance(rec, dict):
+                rec = dict(rec)  # shallow copy
+                # Ensure article_name present as a column
+                rec.setdefault("article_name", article_name)
+                rows.append(rec)
+            else:
+                rows.append({"article_name": article_name, "raw": rec})
+    elif isinstance(data, list):
+        # Older shape: list of rows (already flat-ish)
+        for rec in data:
+            if isinstance(rec, dict):
+                rows.append(rec)
+            else:
+                rows.append({"raw": rec})
+    else:
+        # Unexpected shape; wrap it
+        rows.append({"raw": data})
+
+    return rows
+
+
+def main():
+    rows = load_summaries(INPUT_JSON)
+
+    # Normalize records and add flattened columns
+    normalized_rows = []
+    for rec in rows:
+        rec = dict(rec)  # shallow copy so we can modify
+
+        # Normalize list fields to pipe-separated strings
+        rec["primary_fraud_families"] = join_list(
+            rec.get("primary_fraud_families") or rec.get("primary_fraud_types")
         )
+        rec["secondary_fraud_families"] = join_list(
+            rec.get("secondary_fraud_families")
+        )
+        rec["key_red_flags"] = join_list(rec.get("key_red_flags"))
 
-    for pdf_filename, payload in data.items():
-        if not isinstance(payload, dict):
-            # Skip weird entries
-            continue
+        # Flatten specific_schemes into two columns
+        human_schemes, json_schemes = flatten_specific_schemes(
+            rec.get("specific_schemes")
+        )
+        rec["specific_schemes_flat"] = human_schemes
+        rec["specific_schemes_json"] = json_schemes
 
-        row = {
-            # Key we will join on in Streamlit with fincen_advisories.csv / mapping
-            "pdf_filename": pdf_filename,
-            # Duplicate for clarity
-            "article_name": payload.get("article_name", pdf_filename),
-            "fincen_id": payload.get("fincen_id", ""),
-            "doc_type": payload.get("doc_type", ""),      # Advisory / Alert / Notice
-            "doc_title": payload.get("doc_title", ""),
-            "doc_date": payload.get("doc_date", ""),
-            "high_level_summary": payload.get("high_level_summary", ""),
-            # Lists -> pipe-separated strings
-            "primary_fraud_types": join_list(payload.get("primary_fraud_types", [])),
-            "key_red_flags": join_list(payload.get("key_red_flags", [])),
-            "recommended_sar_focus": join_list(
-                payload.get("recommended_sar_focus", [])
-            ),
-            "why_it_matters_for_usaa": payload.get("why_it_matters_for_usaa", ""),
-        }
+        normalized_rows.append(rec)
 
-        rows.append(row)
+    df = pd.DataFrame(normalized_rows)
 
-    df = pd.DataFrame(rows)
-
-    # Optional: enforce column order
+    # --- Column ordering for the CSV ---
     cols = [
-        "pdf_filename",
         "article_name",
         "fincen_id",
         "doc_type",
         "doc_title",
         "doc_date",
         "high_level_summary",
-        "primary_fraud_types",
+        "primary_fraud_families",
+        "secondary_fraud_families",
+        "specific_schemes_flat",
+        "specific_schemes_json",
         "key_red_flags",
-        "recommended_sar_focus",
-        "why_it_matters_for_usaa",
     ]
+
     existing_cols = [c for c in cols if c in df.columns]
     df = df[existing_cols]
 
