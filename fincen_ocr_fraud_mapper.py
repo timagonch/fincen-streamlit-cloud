@@ -1,367 +1,133 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-fincen_ocr_fraud_mapper.py (Semantic-First Version)
----------------------------------------------------
+fincen_ocr_fraud_mapper.py (Supabase + Incremental Semantic Mapper + OCR Fallback)
+----------------------------------------------------------------------------------
 
-Run (example):
+Pipeline:
 
-    uv run python fincen_ocr_fraud_mapper.py `
-        fincen_advisory_pdfs `
-        fincen_fraud_mapping.csv `
-        fincen_fraud_mapping_details.json `
-        fincen_keyword_locations.csv `
-        fincen_semantic_chunks.csv `
-        --extra-pdf-dir fincen_alert_pdfs `
-        --extra-pdf-dir fincen_notice_pdfs
+INPUT:
+  Supabase:
+    - Table: fincen_publications
+        * fincen_id
+        * title
+        * date
+        * doc_type        ('Advisory' | 'Alert' | 'Notice')
+        * pdf_filename
+        * mapper_processed_at (timestamptz, NULL = not processed yet)
 
-High-level purpose
-------------------
-This script builds the **semantic backbone** for the FinCEN Fraud Intelligence
-Platform. It does the heavy lifting over FinCEN PDFs (advisories, alerts,
-notices) *once*, and persists the results in CSV/JSON files that are reused
-by downstream steps:
+    - Storage bucket: fincen-pdfs
+        * advisories/<pdf_filename>
+        * alerts/<pdf_filename>
+        * notices/<pdf_filename>
 
-- LLM summarization (`fincen_summary_generator.py`)
-- Streamlit analytics / dashboarding
-- RAG / semantic search
+OUTPUT:
+  Supabase tables:
+    - fincen_fraud_mapping      (document-level semantic fraud summary)
+    - fincen_semantic_chunks    (chunk-level semantic tagging + bounding boxes)
+    - fincen_keyword_locations  (per-fraud-type highlight rectangles)
 
-What this script does
----------------------
-For each PDF in your advisory/alert/notice folders, it:
+Behavior:
+  - Only processes publications where mapper_processed_at IS NULL.
+  - For each doc:
+      * Download PDF from bucket to a temp folder
+      * Extract text chunks + normalized bounding boxes via PyMuPDF
+          - If a page has no extractable text → fallback to PaddleOCR
+      * Tag chunks with fraud families via SentenceTransformers + cosine
+      * Write/overwrite rows for that doc in all three mapper tables
+      * Set mapper_processed_at = now() in fincen_publications
 
-1. Extracts text blocks with page-level geometry using PyMuPDF.
-   - Each block becomes a "chunk" with:
-       - article_name (PDF filename)
-       - page_number
-       - bbox (normalized [0,1] coords: x0, y0, x1, y1)
-       - text
-
-2. Splits overly long blocks into smaller chunks (to keep embedding inputs
-   manageable, ~1–3 paragraphs).
-
-3. Uses a local sentence-embedding model to semantically compare each
-   chunk to a fixed set of fraud "families" (money laundering, TBML, etc.).
-   - For each chunk we store:
-       - fraud_types_semantic: list of fraud families that match
-       - fraud_scores_semantic: {fraud_type: similarity}
-
-4. Classifies each chunk into a simple semantic "role" using keyword rules:
-      - typology_description
-      - red_flag_indicator
-      - sar_guidance
-      - regulatory_requirement
-      - actor_description
-      - geography_reference
-      - channel_reference
-      - sector_reference
-      - case_example
-      - context
-   These roles are inferred using simple keyword heuristics (no LLM here),
-   but the schema is designed so you can later upgrade to LLM-based
-   classification without changing the outputs.
-
-5. Extracts cheap entity-like hints per chunk using keyword lists:
-      - countries_mentioned
-      - sectors_mentioned
-      - channels_mentioned
-      - programs_mentioned
-      - actors_mentioned
-
-6. Aggregates per-document fraud signals and chunk counts to determine:
-      - primary_fraud_type_semantic (top-1 by intensity)
-      - secondary_fraud_types_semantic (top 2–3)
-      - semantic_mention_counts_json (JSON map: {fraud_type: count})
-      - total_chunks
-      - high_signal_chunks
-
-7. Produces four outputs:
-
-(1) fincen_fraud_mapping.csv  (DOCUMENT-LEVEL)
-    - One row per PDF with:
-        article_name (PDF filename)
-        primary_fraud_type_semantic
-        secondary_fraud_types_semantic
-        semantic_mention_counts_json
-        total_chunks
-        high_signal_chunks
-      plus any existing columns (doc_title, doc_date, doc_type, etc.)
-      if the file already existed.
-
-(2) fincen_fraud_mapping_details.json  (DOCUMENT-LEVEL, DETAILED)
-    - Keyed by article_name.
-    - For each doc:
-        {
-          "article_name": ...,
-          "fraud_type_scores": {fraud_type: aggregate_score},
-          "semantic_mention_counts": {fraud_type: count_of_chunks},
-          "high_signal_chunk_ids": [[page_number, chunk_index], ...]
-        }
-      - This is useful for debugging, offline analysis, and future RAG uses.
-
-(3) fincen_keyword_locations.csv  (SEMANTIC HIGHLIGHT LOCATIONS)
-   - Despite the name, this is now **semantic**, not regex-based.
-   - One row per high-signal chunk x fraud-type pair.
-   - Contains article_name, fincen_id, fraud_type, page_number, and bbox.
-   - Can be used by the UI to highlight the most relevant paragraphs on
-     each PDF page for a given fraud type.
-
-(4) fincen_semantic_chunks.csv  (CHUNK-LEVEL)
-   - One row per chunk of text on each page of each PDF.
-   - Fields include:
-       article_name,
-       fincen_id (if available),
-       page_number,
-       chunk_index,
-       bbox (x0_norm, y0_norm, x1_norm, y1_norm),
-       text,
-       chunk_role,
-       is_high_signal,
-       fraud_types_semantic,
-       fraud_scores_semantic,
-       countries_mentioned,
-       sectors_mentioned,
-       channels_mentioned,
-       programs_mentioned,
-       actors_mentioned.
-
-OCR behavior
-------------
-- For most modern FinCEN 508 PDFs, `get_text("blocks")` returns text.
-- If a page has **no extractable text** and PaddleOCR is installed, the
-  script:
-    - Renders the page as an image.
-    - Runs OCR.
-    - Treats the entire page as a full-page chunk (bbox = (0,0,1,1)),
-      potentially split into multiple chunks if very long.
-
-- If PaddleOCR is not installed, OCR fallback is disabled and image-only
-  pages will remain unprocessed (same behavior as earlier versions).
-
+Run locally:
+    uv run fincen_ocr_fraud_mapper.py
 """
 
 from __future__ import annotations
 
-import csv
 import json
 import math
-import sys
-from collections import Counter, defaultdict
-from dataclasses import dataclass, asdict
-from hashlib import md5
+import hashlib
+from collections import Counter
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
-import tempfile
-from uuid import uuid4
+from typing import Any, Dict, List, Tuple, Optional
 
 import fitz  # PyMuPDF
-import pandas as pd
-import argparse 
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
+from supabase_helpers import get_supabase_client, BUCKET_NAME
+
+# Optional OCR (PaddleOCR)
 try:
-    from paddleocr import PaddleOCR  # type: ignore
+    from paddleocr import PaddleOCR
+
     _OCR_AVAILABLE = True
     OCR_ENGINE = PaddleOCR(use_angle_cls=True, lang="en")
 except Exception:
     _OCR_AVAILABLE = False
     OCR_ENGINE = None
 
-# ------------------------------ CONFIG ---------------------------------------
 
-# Default paths (can be overridden via CLI)
-OUT_DOC_CSV = "fincen_fraud_mapping.csv"
-OUT_DETAILS_JSON = "fincen_fraud_mapping_details.json"
-OUT_KEYWORD_LOCATIONS = "fincen_keyword_locations.csv"
-OUT_SEMANTIC_CHUNKS = "fincen_semantic_chunks.csv"
+# ---------------------------------------------------------------------------
+# FRAUD FAMILY DEFINITIONS (semantic labels)
+# ---------------------------------------------------------------------------
 
-# Advisory/Alert/Notice metadata CSVs – if available, we merge titles/dates
-DEFAULT_META_CSVS = [
-    "fincen_advisories.csv",
-    "fincen_alerts.csv",
-    "fincen_notices.csv",
-]
-
-# ----------------------------- FRAUD ONTOLOGY --------------------------------
-
-# Canonical fraud types for semantic tagging
-FRAUD_TYPES: Dict[str, str] = {
-    "money_laundering": "Money laundering and layering of criminal proceeds through financial institutions.",
-    "structuring_smurfing": "Structuring or smurfing to avoid reporting thresholds, such as CTRs.",
-    "terrorist_financing": "Financing of terrorism, extremist organizations, or designated persons.",
-    "sanctions_evasion": "Sanctions evasion and dealing with OFAC-designated jurisdictions or parties.",
-    "human_trafficking": "Human trafficking or smuggling, exploitation of workers or victims for profit.",
-    "human_smuggling": "Human smuggling across borders, paying facilitators to move people illegally.",
-    "fraud_government_programs": "Fraud against government programs such as unemployment insurance, EIP, PPP, healthcare benefits.",
-    "ransomware_cyber": "Ransomware, cyber extortion, or related cyber-enabled financial crime.",
-    "trade_based_money_laundering": "Trade-based money laundering and abuse of invoices, shipping, import and export flows.",
-    "bulk_cash_smuggling": "Bulk cash smuggling, cross-border movement of large amounts of currency.",
-    "virtual_assets_crypto": "Use of virtual assets or cryptocurrencies such as Bitcoin or stablecoins for illicit finance.",
-    "correspondent_banking": "Misuse of correspondent banking relationships and nested accounts.",
-    "shell_front_companies": "Use of shell companies or front businesses to hide ownership or illicit proceeds.",
-    "elder_romance_scam": "Elder fraud, romance scams, or schemes targeting vulnerable customers.",
-    "synthetic_identity": "Synthetic identity creation and misuse of identity information.",
-    "proliferation_financing": "Financing of proliferation of weapons of mass destruction.",
-    "corruption_bribery": "Corruption, bribery, embezzlement, misuse of public office.",
+FRAUD_FAMILIES: Dict[str, str] = {
+    "sanctions_evasion": "Sanctions evasion, including use of shell companies, third-country intermediaries, or complex structures to move funds around sanctions.",
+    "terrorist_financing": "Terrorist financing, including fundraising, funnel accounts, charities misused for terrorism, and foreign fighter support.",
+    "human_trafficking": "Human trafficking or human exploitation, including forced labor, sexual exploitation, or related financial activity.",
+    "human_smuggling": "Human smuggling across borders, with payments to smugglers or facilitators moving people illegally.",
+    "romance_elder_scam": "Romance scams or elder fraud schemes targeting older or vulnerable persons for financial gain.",
+    "synthetic_identity": "Synthetic identity schemes that combine real and fake identity elements to open accounts or obtain credit.",
+    "virtual_assets_crypto": "Use of virtual assets or cryptocurrency such as Bitcoin, stablecoins, mixers, or DeFi protocols to conduct illicit finance.",
+    "trade_based_money_laundering": "Trade-based money laundering through invoices, over/under-invoicing, phantom shipments, or misuse of import-export flows.",
+    "corruption_bribery": "Corruption, bribery, embezzlement, or misuse of public office for private gain.",
+    "ransomware_cyber": "Ransomware, cyber extortion, malware, or related cyber-enabled financial crime.",
+    "fraud_government_programs": "Fraud against government benefit or relief programs such as unemployment insurance, PPP, EIP, healthcare benefits.",
+    "bulk_cash_smuggling": "Bulk cash smuggling or cross-border movement of large amounts of currency or monetary instruments.",
+    "shell_front_companies": "Use of shell companies, front companies, or complex corporate structures to hide ownership or illicit proceeds.",
+    "correspondent_banking": "Misuse of correspondent banking relationships, nested accounts, or high-risk foreign financial institutions.",
+    "money_mules": "Use of money mules or intermediary accounts to move or layer illicit funds.",
+    "card_fraud": "Payment card fraud, including debit or credit card compromise, card-not-present fraud, or related schemes.",
 }
 
-# --------------------------- SIMPLE ENTITY LEXICONS --------------------------
 
-COUNTRY_KEYWORDS = {
-    "united states": "US",
-    "u.s.": "US",
-    "u.s": "US",
-    "usa": "US",
-    "russia": "RU",
-    "ukraine": "UA",
-    "iran": "IR",
-    "north korea": "KP",
-    "china": "CN",
-    "hong kong": "HK",
-    "mexico": "MX",
-    "canada": "CA",
-    "venezuela": "VE",
-    "colombia": "CO",
-    "panama": "PA",
-    "cayman islands": "KY",
-    "british virgin islands": "VG",
-    "united kingdom": "GB",
-    "u.k.": "GB",
-    "uk": "GB",
-    "germany": "DE",
-    "france": "FR",
-    "italy": "IT",
-    "spain": "ES",
-    "turkey": "TR",
-    "uae": "AE",
-    "united arab emirates": "AE",
-    "saudi arabia": "SA",
-}
-
-SECTOR_KEYWORDS = {
-    "bank": "bank",
-    "banks": "bank",
-    "credit union": "credit_union",
-    "credit unions": "credit_union",
-    "money services business": "msb",
-    "msb": "msb",
-    "broker-dealer": "broker_dealer",
-    "casino": "casino",
-    "card club": "card_club",
-    "insurance": "insurance",
-    "fintech": "fintech",
-}
-
-CHANNEL_KEYWORDS = {
-    "wire transfer": "wire",
-    "wires": "wire",
-    "wire transfers": "wire",
-    "ach": "ach",
-    "ach transfer": "ach",
-    "cash deposit": "cash_deposit",
-    "cash deposits": "cash_deposit",
-    "atm": "atm",
-    "atm withdrawal": "atm",
-    "check": "check",
-    "checks": "check",
-    "remote deposit": "remote_deposit",
-    "mobile deposit": "remote_deposit",
-    "online banking": "online_banking",
-    "prepaid card": "prepaid_card",
-    "prepaid cards": "prepaid_card",
-    "card-to-card": "card_to_card",
-}
-
-PROGRAM_KEYWORDS = {
-    "ppp loan": "ppp",
-    "paycheck protection program": "ppp",
-    "economic impact payment": "eip",
-    "eip": "eip",
-    "unemployment insurance": "ui",
-    "unemployment benefits": "ui",
-    "snap": "snap",
-    "medicare": "medicare",
-    "medicaid": "medicaid",
-}
-
-ACTOR_KEYWORDS = {
-    "money mule": "money_mule",
-    "mules": "money_mule",
-    "shell company": "shell_company",
-    "front company": "front_company",
-    "front business": "front_company",
-    "armored car service": "acs",
-    "armoured car service": "acs",
-    "cash courier": "courier",
-    "courier": "courier",
-}
-
-# --------------------------------- TYPES -------------------------------------
-
-
-@dataclass
-class Chunk:
-    article_name: str
-    page_number: int
-    bbox: Tuple[float, float, float, float]
-    text: str
-
-
-@dataclass
-class SemanticChunk:
-    article_name: str
-    page_number: int
-    chunk_index: int
-    bbox: Tuple[float, float, float, float]
-    text: str
-    chunk_role: str
-    is_high_signal: bool
-    fraud_types_semantic: List[str]
-    fraud_scores_semantic: Dict[str, float]
-    countries_mentioned: List[str]
-    sectors_mentioned: List[str]
-    channels_mentioned: List[str]
-    programs_mentioned: List[str]
-    actors_mentioned: List[str]
-
-
-@dataclass
-class DocSemanticSummary:
-    article_name: str
-    primary_fraud_type_semantic: str
-    secondary_fraud_types_semantic: str  # pipe-separated
-    semantic_mention_counts_json: str    # JSON string of {fraud_type: count}
-    total_chunks: int
-    high_signal_chunks: int
-
-
-@dataclass
-class DocDetailedStats:
-    article_name: str
-    fraud_type_scores: Dict[str, float]
-    semantic_mention_counts: Dict[str, int]
-    high_signal_chunk_ids: List[Tuple[int, int]]  # (page_number, chunk_index)
-
-
-# -------------------------- EMBEDDING + CACHE --------------------------------
-
+# ---------------------------------------------------------------------------
+# EMBEDDINGS + COSINE SIMILARITY
+# ---------------------------------------------------------------------------
 
 def _hash_text(text: str) -> str:
-    return md5(text.encode("utf-8"), usedforsecurity=False).hexdigest()
+    # Hash for embedding cache key
+    return hashlib.md5(text.encode("utf-8"), usedforsecurity=False).hexdigest()
 
 
-def _get_cached_embed_fn(model_name: str, cache_path: Path):
+def _cosine(v1, v2) -> float:
+    a = np.array(v1, dtype=float)
+    b = np.array(v2, dtype=float)
+    dot = float((a * b).sum())
+    n1 = float(np.linalg.norm(a))
+    n2 = float(np.linalg.norm(b))
+    if n1 == 0.0 or n2 == 0.0:
+        return 0.0
+    return dot / (n1 * n2)
+
+
+def get_embed_fn_with_cache(model_name: str, cache_path: Path):
     """
-    Returns an embedding function that uses SentenceTransformers + a simple
-    JSON file cache keyed by MD5 of the text. This avoids recomputing
-    embeddings for repeated chunks across runs.
+    Returns an embed(texts) -> List[List[float]] function backed by a JSON cache.
+
+    - Uses SentenceTransformer(model_name).
+    - Caches embeddings by MD5 hash of text.
+    - Cache file is kept in .cache/embed_cache.json by default (git-ignore-friendly).
     """
-    from sentence_transformers import SentenceTransformer
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     model = SentenceTransformer(model_name)
 
     if cache_path.exists():
         try:
-            cache: Dict[str, List[float]] = json.loads(cache_path.read_text())
+            cache: Dict[str, List[float]] = json.loads(cache_path.read_text(encoding="utf-8"))
         except Exception:
             cache = {}
     else:
@@ -371,258 +137,42 @@ def _get_cached_embed_fn(model_name: str, cache_path: Path):
         nonlocal cache
         results: List[List[float]] = []
         to_compute: List[str] = []
-        missing_idx: List[int] = []
+        idx_map: List[int] = []
 
         for i, t in enumerate(texts):
             h = _hash_text(t)
             if h in cache:
                 results.append(cache[h])
             else:
-                results.append([])  # placeholder
+                results.append([])
                 to_compute.append(t)
-                missing_idx.append(i)
+                idx_map.append(i)
 
         if to_compute:
-            vecs = model.encode(to_compute, normalize_embeddings=True)
-            for idx, vec in zip(missing_idx, vecs.tolist()):
-                h = _hash_text(texts[idx])
-                results[idx] = vec
+            new_vecs = model.encode(to_compute, show_progress_bar=False).tolist()
+            for i, vec in zip(idx_map, new_vecs):
+                h = _hash_text(texts[i])
                 cache[h] = vec
-
-            try:
-                cache_path.write_text(json.dumps(cache), encoding="utf-8")
-            except Exception:
-                # best-effort cache write; do not crash the pipeline
-                pass
+                results[i] = vec
+            cache_path.write_text(json.dumps(cache), encoding="utf-8")
 
         return results
 
     return embed
 
 
-# ---------------------------- PDF CHUNK EXTRACTION ---------------------------
-
-MAX_CHUNK_CHARS = 1400
-
-
-def extract_chunks_from_pdf(pdf_path: Path) -> List[Chunk]:
+def build_fraud_family_vectors(embed_fn) -> Dict[str, List[float]]:
     """
-    Extracts text chunks from a PDF using PyMuPDF 'blocks' as a starting point,
-    with an OCR fallback for image-only pages.
-
-    - Each text block on each page becomes a Chunk, with normalized bbox and text.
-    - We perform minimal cleaning and enforce a maximum character length per
-      chunk (splitting large blocks into smaller paragraphs if needed).
-    - If a page has no extractable text and PaddleOCR is available, we render
-      the page to an image and run OCR, treating the entire page as one or more
-      chunks with a full-page bbox (0,0,1,1).
+    Compute an embedding vector for each fraud family description.
+    Returns: {fraud_key: embedding_vector}
     """
-    doc = fitz.open(pdf_path)
-    chunks: List[Chunk] = []
-
-    for page_index in range(len(doc)):
-        page = doc[page_index]
-        blocks = page.get_text("blocks")
-        W, H = float(page.rect.width), float(page.rect.height)
-
-        page_has_text = False
-
-        for blk in blocks:
-            # blk: (x0, y0, x1, y1, text, block_no, block_type, ...)
-            if len(blk) < 5:
-                continue
-            x0, y0, x1, y1, txt = float(blk[0]), float(blk[1]), float(blk[2]), float(blk[3]), blk[4]
-            txt = (txt or "").strip()
-            if not txt:
-                continue
-
-            page_has_text = True
-
-            # Split very long blocks into smaller chunks by paragraph
-            paragraphs = [p.strip() for p in txt.split("\n") if p.strip()]
-            para_buf: List[str] = []
-            current_len = 0
-            for p in paragraphs:
-                if current_len + len(p) > MAX_CHUNK_CHARS and para_buf:
-                    chunk_text = " ".join(para_buf).strip()
-                    if chunk_text:
-                        chunks.append(
-                            Chunk(
-                                article_name=pdf_path.name,
-                                page_number=page_index + 1,
-                                bbox=(x0 / W, y0 / H, x1 / W, y1 / H),
-                                text=chunk_text,
-                            )
-                        )
-                    para_buf = []
-                    current_len = 0
-                para_buf.append(p)
-                current_len += len(p) + 1
-
-            if para_buf:
-                chunk_text = " ".join(para_buf).strip()
-                if chunk_text:
-                    chunks.append(
-                        Chunk(
-                            article_name=pdf_path.name,
-                            page_number=page_index + 1,
-                            bbox=(x0 / W, y0 / H, x1 / W, y1 / H),
-                            text=chunk_text,
-                        )
-                    )
-
-        # OCR fallback if the page had no text
-        if (not page_has_text) and _OCR_AVAILABLE and OCR_ENGINE is not None:
-            try:
-                ocr_text = _ocr_page_to_text(page)
-            except Exception:
-                ocr_text = ""
-            ocr_text = (ocr_text or "").strip()
-            if ocr_text:
-                paragraphs = [p.strip() for p in ocr_text.split("\n") if p.strip()]
-                para_buf: List[str] = []
-                current_len = 0
-                for p in paragraphs:
-                    if current_len + len(p) > MAX_CHUNK_CHARS and para_buf:
-                        chunk_text = " ".join(para_buf).strip()
-                        if chunk_text:
-                            chunks.append(
-                                Chunk(
-                                    article_name=pdf_path.name,
-                                    page_number=page_index + 1,
-                                    bbox=(0.0, 0.0, 1.0, 1.0),
-                                    text=chunk_text,
-                                )
-                            )
-                        para_buf = []
-                        current_len = 0
-                    para_buf.append(p)
-                    current_len += len(p) + 1
-
-                if para_buf:
-                    chunk_text = " ".join(para_buf).strip()
-                    if chunk_text:
-                        chunks.append(
-                            Chunk(
-                                article_name=pdf_path.name,
-                                page_number=page_index + 1,
-                                bbox=(0.0, 0.0, 1.0, 1.0),
-                                text=chunk_text,
-                            )
-                        )
-
-    doc.close()
-    return chunks
-
-
-def _ocr_page_to_text(page) -> str:
-    """
-    Render a PyMuPDF page to an image and run PaddleOCR on it (if available).
-    Returns concatenated text lines or an empty string if OCR is unavailable.
-    """
-    if not _OCR_AVAILABLE or OCR_ENGINE is None:
-        return ""
-
-    # Render the page to a temporary PNG
-    pix = page.get_pixmap(dpi=200)
-    tmp_dir = Path(tempfile.gettempdir())
-    tmp_path = tmp_dir / f"fincen_ocr_{uuid4().hex}.png"
-    pix.save(tmp_path.as_posix())
-
-    try:
-        result = OCR_ENGINE.ocr(str(tmp_path), cls=True)
-    finally:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-
-    lines: List[str] = []
-    if not result:
-        return ""
-    # PaddleOCR result is a list of [ [ (box, (text, score)), ... ], ... ]
-    for line in result:
-        for item in line:
-            if len(item) >= 2 and isinstance(item[1], (list, tuple)):
-                text = str(item[1][0]).strip()
-                if text:
-                    lines.append(text)
-
-    return "\n".join(lines)
-
-
-# ----------------------- CHUNK ROLE & ENTITY TAGGING -------------------------
-
-
-def classify_chunk_role(text: str) -> str:
-    """
-    Cheap keyword-based classifier for chunk roles.
-    """
-    t = text.lower()
-
-    if "red flag" in t or "red-flag" in t or "indicators of" in t:
-        return "red_flag_indicator"
-
-    if "sar" in t and ("filing" in t or "file" in t or "report suspicious" in t):
-        return "sar_guidance"
-
-    if any(kw in t for kw in ["must file", "are required to", "obligation", "must report"]):
-        return "regulatory_requirement"
-
-    if any(kw in t for kw in ["typology", "scheme", "pattern", "modus operandi"]):
-        return "typology_description"
-
-    if any(kw in t for kw in ["money mule", "mules", "perpetrator", "bad actors", "criminal networks"]):
-        return "actor_description"
-
-    if any(kw in t for kw in ["jurisdiction", "country", "region", "cross-border", "international"]):
-        return "geography_reference"
-
-    if any(kw in t for kw in ["wire transfer", "wire transfers", "cash deposits", "ach ", "prepaid card", "mobile app"]):
-        return "channel_reference"
-
-    if any(kw in t for kw in ["bank", "credit union", "money services business", "msb", "casino"]):
-        return "sector_reference"
-
-    if any(kw in t for kw in ["for example", "in one case", "in another case", "in one instance"]):
-        return "case_example"
-
-    return "context"
-
-
-def extract_entities_for_chunk(text: str) -> Dict[str, List[str]]:
-    """
-    Very lightweight entity-like tagging from keyword lexicons.
-    """
-    t = text.lower()
-
-    def _extract_from_map(mapping: Dict[str, str]) -> List[str]:
-        found = set()
-        for kw, label in mapping.items():
-            if kw in t:
-                found.add(label)
-        return sorted(found)
-
-    return {
-        "countries": _extract_from_map(COUNTRY_KEYWORDS),
-        "sectors": _extract_from_map(SECTOR_KEYWORDS),
-        "channels": _extract_from_map(CHANNEL_KEYWORDS),
-        "programs": _extract_from_map(PROGRAM_KEYWORDS),
-        "actors": _extract_from_map(ACTOR_KEYWORDS),
-    }
-
-
-# ----------------------- FRAUD SIMILARITY PER CHUNK --------------------------
-
-
-def build_fraud_type_vectors(embed_fn) -> Dict[str, List[float]]:
-    """
-    Embed the descriptions of each fraud type once.
-    """
-    keys = list(FRAUD_TYPES.keys())
-    descs = [FRAUD_TYPES[k] for k in keys]
-    vecs = embed_fn(descs)
-    return {k: v for k, v in zip(keys, vecs)}
+    fraud_vecs: Dict[str, List[float]] = {}
+    texts = list(FRAUD_FAMILIES.values())
+    keys = list(FRAUD_FAMILIES.keys())
+    vecs = embed_fn(texts)
+    for k, v in zip(keys, vecs):
+        fraud_vecs[k] = v
+    return fraud_vecs
 
 
 def tag_chunk_with_fraud_types(
@@ -631,467 +181,478 @@ def tag_chunk_with_fraud_types(
     embed_fn,
     sim_threshold: float = 0.42,
     top_k: int = 3,
-    min_sim_floor: float = 0.30,
-) -> Tuple[List[str], Dict[str, float]]:
+):
     """
-    Compute semantic similarity between chunk text and each fraud family.
+    For a given chunk of text:
+      - Embed the chunk
+      - Compute cosine similarity to each fraud family
+      - Return:
+          * fraud_types: list of fraud keys with similarity >= threshold (up to top_k)
+          * scores: {fraud_key: similarity}
     """
-    if not text.strip():
+    text = text.strip()
+    if not text:
         return [], {}
 
     vec = embed_fn([text])[0]
     scores: Dict[str, float] = {}
-    for key, fvec in fraud_vecs.items():
-        scores[key] = float(_cosine(vec, fvec))
+    for k, fraud_vec in fraud_vecs.items():
+        scores[k] = _cosine(vec, fraud_vec)
 
-    # Above threshold
-    selected = [k for k, s in scores.items() if s >= sim_threshold]
-
-    # Ensure we keep top_k above minimum floor
-    top = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    for k, s in top[:top_k]:
-        if s >= min_sim_floor and k not in selected:
+    sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    selected: List[str] = []
+    for k, v in sorted_items[:top_k]:
+        if v >= sim_threshold:
             selected.append(k)
 
-    selected = list(dict.fromkeys(selected))  # dedupe, keep order
+    # Deduplicate while preserving order
+    selected = list(dict.fromkeys(selected))
     return selected, scores
 
 
-def _cosine(v1: List[float], v2: List[float]) -> float:
-    import numpy as np
+# ---------------------------------------------------------------------------
+# OCR FALLBACK
+# ---------------------------------------------------------------------------
 
-    a = np.array(v1, dtype=float)
-    b = np.array(v2, dtype=float)
-    dot = float((a * b).sum())
-    n1 = float(np.linalg.norm(a))
-    n2 = float(np.linalg.norm(b))
-    if n1 == 0.0 or n2 == 0.0:
-        return 0.0
-    return float(dot / (n1 * n2))
+def ocr_page_to_text(page) -> str:
+    """
+    Render a PyMuPDF page to PNG bytes and run PaddleOCR to get text.
+
+    Returns a concatenated string of recognized lines, or "" if OCR is
+    unavailable or fails.
+    """
+    if not _OCR_AVAILABLE or OCR_ENGINE is None:
+        return ""
+
+    pix = page.get_pixmap(dpi=200)
+    img_bytes = pix.tobytes("png")
+
+    try:
+        results = OCR_ENGINE.ocr(img_bytes, cls=True)
+        lines: List[str] = []
+        for res in results:
+            for line in res:
+                # line[1][0] is the recognized text string
+                lines.append(line[1][0])
+        return "\n".join(lines)
+    except Exception:
+        return ""
 
 
-# ---------------------------- DOCUMENT AGGREGATION ---------------------------
+# ---------------------------------------------------------------------------
+# CHUNKING WITH PyMuPDF + OCR FALLBACK
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Chunk:
+    article_name: str
+    page_number: int
+    bbox: Tuple[float, float, float, float]   # normalized (x0, y0, x1, y1)
+    text: str
 
 
-def aggregate_document_level(
+@dataclass
+class SemanticChunk:
+    article_name: str
+    fincen_id: Optional[str]
+    doc_type: Optional[str]
+    page_number: int
+    chunk_index: int
+    bbox: Tuple[float, float, float, float]
+    text: str
+    is_high_signal: bool
+    fraud_types_semantic: List[str]
+    fraud_scores_semantic: Dict[str, float]
+
+
+@dataclass
+class DocSummary:
+    article_name: str
+    fincen_id: Optional[str]
+    title: Optional[str]
+    date: Optional[str]
+    doc_type: Optional[str]
+    primary_fraud_type_semantic: str
+    secondary_fraud_types_semantic: List[str]
+    fraud_mention_counts_semantic: Dict[str, int]
+    total_chunks: int
+
+
+def extract_chunks_from_pdf(pdf_path: Path, max_chunk_chars: int = 900) -> List[Chunk]:
+    """
+    Use PyMuPDF to:
+      - Iterate pages
+      - Get text blocks
+      - Merge into paragraph-level chunks up to max_chunk_chars
+      - Normalize bounding boxes to [0, 1] x [0, 1]
+      - If a page has no text blocks, fallback to OCR (PaddleOCR) and
+        chunk OCR text with a full-page bounding box.
+    """
+    chunks: List[Chunk] = []
+
+    with fitz.open(pdf_path) as doc:
+        for page_index, page in enumerate(doc):
+            page_rect = page.rect
+            W, H = float(page_rect.width), float(page_rect.height)
+
+            blocks = page.get_text("blocks") or []
+            blocks = sorted(blocks, key=lambda b: (b[1], b[0]))
+
+            page_has_text = False
+
+            para_buf: List[str] = []
+            x0 = y0 = math.inf
+            x1 = y1 = -math.inf
+            current_len = 0
+
+            def flush_buf():
+                nonlocal para_buf, x0, y0, x1, y1, current_len
+                txt = " ".join(para_buf).strip()
+                if not txt:
+                    para_buf = []
+                    current_len = 0
+                    return
+
+                if W <= 0 or H <= 0 or not math.isfinite(W) or not math.isfinite(H):
+                    bbox_norm = (0.0, 0.0, 1.0, 1.0)
+                else:
+                    bbox_norm = (x0 / W, y0 / H, x1 / W, y1 / H)
+
+                chunks.append(
+                    Chunk(
+                        article_name=pdf_path.name,
+                        page_number=page_index + 1,
+                        bbox=bbox_norm,
+                        text=txt,
+                    )
+                )
+                para_buf = []
+                current_len = 0
+
+            # ----- Normal text-block extraction -----
+            for b in blocks:
+                bx0, by0, bx1, by1, bt, *_ = b
+                txt = (bt or "").strip()
+                if not txt:
+                    continue
+
+                page_has_text = True
+
+                if current_len + len(txt) > max_chunk_chars and para_buf:
+                    flush_buf()
+                    x0, y0, x1, y1 = bx0, by0, bx1, by1
+
+                para_buf.append(txt)
+                current_len += len(txt)
+
+                x0 = min(x0, bx0)
+                y0 = min(y0, by0)
+                x1 = max(x1, bx1)
+                y1 = max(y1, by1)
+
+            flush_buf()
+
+            # ----- OCR fallback if no text on page -----
+            if not page_has_text and _OCR_AVAILABLE:
+                ocr_text = ocr_page_to_text(page)
+                if ocr_text.strip():
+                    paragraphs = [p.strip() for p in ocr_text.split("\n") if p.strip()]
+                    buf: List[str] = []
+                    length = 0
+
+                    for p in paragraphs:
+                        if length + len(p) > max_chunk_chars and buf:
+                            chunks.append(
+                                Chunk(
+                                    article_name=pdf_path.name,
+                                    page_number=page_index + 1,
+                                    bbox=(0.0, 0.0, 1.0, 1.0),
+                                    text=" ".join(buf).strip(),
+                                )
+                            )
+                            buf = []
+                            length = 0
+
+                        buf.append(p)
+                        length += len(p) + 1
+
+                    if buf:
+                        chunks.append(
+                            Chunk(
+                                article_name=pdf_path.name,
+                                page_number=page_index + 1,
+                                bbox=(0.0, 0.0, 1.0, 1.0),
+                                text=" ".join(buf).strip(),
+                            )
+                        )
+
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# AGGREGATE TO DOC-LEVEL + TABLE ROWS
+# ---------------------------------------------------------------------------
+
+def aggregate_document(
     article_name: str,
+    fincen_id: Optional[str],
+    title: Optional[str],
+    date: Optional[str],
+    doc_type: Optional[str],
     chunks: List[Chunk],
-    fraud_annos: List[Dict[str, Any]],
-    chunk_enrichments: List[Dict[str, Any]],
-) -> Tuple[DocSemanticSummary, DocDetailedStats, List[SemanticChunk]]:
+    fraud_results: List[Tuple[List[str], Dict[str, float]]],
+):
     """
-    Aggregate all semantic info for a single document into:
-      - doc-level summary
-      - doc-level detailed stats
-      - list of SemanticChunk objects
+    From chunk-level fraud tagging, compute:
+
+      - DocSummary (for fincen_fraud_mapping)
+      - List[SemanticChunk] (for fincen_semantic_chunks)
+      - keyword_rows (for fincen_keyword_locations)
     """
-    # Count mentions per fraud type
     mention_counts: Counter = Counter()
-    score_sum: Counter = Counter()
-    high_signal_ids: List[Tuple[int, int]] = []
+    score_sums: Counter = Counter()
+    semantic_chunks: List[SemanticChunk] = []
+    keyword_rows: List[Dict[str, Any]] = []
 
-    sem_chunks: List[SemanticChunk] = []
-
-    for idx, (chunk, fraud_info, enrich_info) in enumerate(
-        zip(chunks, fraud_annos, chunk_enrichments)
-    ):
-        # Unpack enrich info
-        role = enrich_info["chunk_role"]
-        is_high = enrich_info["is_high_signal"]
-        ent = enrich_info["entities"]
-
-        f_types = fraud_info["fraud_types_semantic"]
-        f_scores = fraud_info["fraud_scores_semantic"]
-
-        if is_high and f_types:
-            high_signal_ids.append((chunk.page_number, idx))
-
-        # Count and score, weighted by role
-        role_weight = 1.0
-        if role in ("typology_description", "red_flag_indicator"):
-            role_weight = 1.5
-        elif role in ("sar_guidance", "regulatory_requirement"):
-            role_weight = 1.2
+    for idx, (ch, (f_types, f_scores)) in enumerate(zip(chunks, fraud_results)):
+        if not f_types:
+            is_high = False
+        else:
+            max_score = max(f_scores.values()) if f_scores else 0.0
+            is_high = max_score >= 0.5
 
         for ft in f_types:
             mention_counts[ft] += 1
-            score_sum[ft] += role_weight * float(f_scores.get(ft, 0.0))
+            score_sums[ft] += float(f_scores.get(ft, 0.0))
 
-        sem_chunks.append(
-            SemanticChunk(
-                article_name=article_name,
-                page_number=chunk.page_number,
-                chunk_index=idx,
-                bbox=chunk.bbox,
-                text=chunk.text,
-                chunk_role=role,
-                is_high_signal=is_high,
-                fraud_types_semantic=f_types,
-                fraud_scores_semantic=f_scores,
-                countries_mentioned=ent["countries"],
-                sectors_mentioned=ent["sectors"],
-                channels_mentioned=ent["channels"],
-                programs_mentioned=ent["programs"],
-                actors_mentioned=ent["actors"],
-            )
+        sc = SemanticChunk(
+            article_name=article_name,
+            fincen_id=fincen_id,
+            doc_type=doc_type,
+            page_number=ch.page_number,
+            chunk_index=idx,
+            bbox=ch.bbox,
+            text=ch.text,
+            is_high_signal=is_high,
+            fraud_types_semantic=f_types,
+            fraud_scores_semantic=f_scores,
         )
+        semantic_chunks.append(sc)
+
+        # High-signal chunks contribute highlight rectangles
+        if is_high and f_types:
+            for ft in f_types:
+                keyword_rows.append(
+                    {
+                        "article_name": article_name,
+                        "fincen_id": fincen_id,
+                        "doc_type": doc_type,
+                        "fraud_type": ft,
+                        "page_number": ch.page_number,
+                        "x0_norm": ch.bbox[0],
+                        "y0_norm": ch.bbox[1],
+                        "x1_norm": ch.bbox[2],
+                        "y1_norm": ch.bbox[3],
+                    }
+                )
 
     if mention_counts:
-        sorted_scores = sorted(score_sum.items(), key=lambda x: x[1], reverse=True)
+        sorted_scores = sorted(score_sums.items(), key=lambda x: x[1], reverse=True)
         primary = sorted_scores[0][0]
         primary_score = sorted_scores[0][1]
-        secondary = [
-            k for k, v in sorted_scores[1:]
-            if v >= 0.4 * primary_score
-        ]
+        secondary = [k for (k, v) in sorted_scores[1:] if v >= 0.4 * primary_score]
     else:
         primary = ""
         secondary = []
 
-    summary = DocSemanticSummary(
+    summary = DocSummary(
         article_name=article_name,
+        fincen_id=fincen_id,
+        title=title,
+        date=date,
+        doc_type=doc_type,
         primary_fraud_type_semantic=primary,
-        secondary_fraud_types_semantic=" | ".join(secondary) if secondary else "",
-        semantic_mention_counts_json=json.dumps(mention_counts, ensure_ascii=False),
+        secondary_fraud_types_semantic=secondary,
+        fraud_mention_counts_semantic=dict(mention_counts),
         total_chunks=len(chunks),
-        high_signal_chunks=len(high_signal_ids),
     )
 
-    details = DocDetailedStats(
-        article_name=article_name,
-        fraud_type_scores={k: float(v) for k, v in score_sum.items()},
-        semantic_mention_counts={k: int(v) for k, v in mention_counts.items()},
-        high_signal_chunk_ids=high_signal_ids,
+    return summary, semantic_chunks, keyword_rows
+
+
+# ---------------------------------------------------------------------------
+# SUPABASE HELPERS (specific to mapper)
+# ---------------------------------------------------------------------------
+
+def fetch_unprocessed_publications(client):
+    """
+    Return publications that have not yet been processed by the mapper
+    (mapper_processed_at IS NULL).
+
+    After the one-time full rebuild, this keeps the mapper incremental:
+    only new rows in fincen_publications (or ones you manually reset)
+    will be processed.
+    """
+    resp = (
+        client.table("fincen_publications")
+        .select("fincen_id, title, date, doc_type, pdf_filename")
+        .is_("mapper_processed_at", None)
+        .execute()
     )
-
-    return summary, details, sem_chunks
-
-
-# ------------------------- METADATA MERGING HELPERS --------------------------
+    return resp.data or []
 
 
-def load_existing_mapping(out_csv: Path) -> pd.DataFrame:
-    if out_csv.exists():
-        return pd.read_csv(out_csv)
-    return pd.DataFrame()
 
 
-def load_metadata_index(meta_csvs: List[str]) -> Dict[str, Dict[str, Any]]:
+def download_pdf_from_bucket(client, pdf_filename: str, doc_type: str, dest_path: Path) -> None:
     """
-    Build an index {article_name -> metadata_dict} from crawler CSVs.
+    Download a PDF from Supabase Storage into dest_path.
+
+    Assumes bucket layout:
+        advisories/<pdf_filename>
+        alerts/<pdf_filename>
+        notices/<pdf_filename>
     """
-    index: Dict[str, Dict[str, Any]] = {}
-    for csv_path in meta_csvs:
-        p = Path(csv_path)
-        if not p.exists():
-            continue
-        try:
-            df = pd.read_csv(p)
-        except Exception:
-            continue
+    folder = {
+        "Advisory": "advisories",
+        "Alert": "alerts",
+        "Notice": "notices",
+    }.get(doc_type, "other")
 
-        # we assume these columns *might* exist
-        col_article = None
-        for cand in ["article_name", "pdf_name", "file_name", "filename"]:
-            if cand in df.columns:
-                col_article = cand
-                break
-        if col_article is None:
-            continue
+    remote_path = f"{folder}/{pdf_filename}"
 
-        for _, row in df.iterrows():
-            name = str(row[col_article]).strip()
-            if not name:
-                continue
-            index[name] = {
-                "fincen_id": row.get("fincen_id"),
-                "doc_title": row.get("doc_title") or row.get("title"),
-                "doc_date": row.get("doc_date") or row.get("date"),
-                "doc_type": row.get("doc_type") or row.get("publication_type"),
-                "date": row.get("date"),
-                "pdf_url": row.get("pdf_url"),
-                "publication_type": row.get("publication_type"),
-            }
-    return index
+    data = client.storage.from_(BUCKET_NAME).download(remote_path)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(dest_path, "wb") as f:
+        f.write(data)
 
 
-# ------------------------- KEYWORD LOCATIONS (FOR UI) ------------------------
+# ---------------------------------------------------------------------------
+# MAIN PIPELINE
+# ---------------------------------------------------------------------------
 
+def main() -> None:
+    client = get_supabase_client()
 
-def build_semantic_keyword_locations(
-    article_name: str,
-    fincen_id: Optional[str],
-    sem_chunks: List[SemanticChunk],
-) -> List[Dict[str, Any]]:
-    """
-    Produce a row per (chunk, fraud_type) to support PDF highlighting in the UI.
-    """
-    rows: List[Dict[str, Any]] = []
-    for ch in sem_chunks:
-        if not ch.is_high_signal or not ch.fraud_types_semantic:
-            continue
-        for ft in ch.fraud_types_semantic:
-            rows.append(
-                {
-                    "article_name": article_name,
-                    "fincen_id": fincen_id,
-                    "fraud_type": ft,
-                    "page_number": ch.page_number,
-                    "x0_norm": ch.bbox[0],
-                    "y0_norm": ch.bbox[1],
-                    "x1_norm": ch.bbox[2],
-                    "y1_norm": ch.bbox[3],
-                }
-            )
-    return rows
-
-
-# ------------------------------- MAIN PIPELINE --------------------------------
-
-
-def main(
-    pdf_dir: str,
-    out_csv: str,
-    out_json: str,
-    out_keyword_locations: str,
-    out_semantic_chunks: str,
-    force: bool = False,
-    extra_pdf_dirs: Optional[List[str]] = None,
-) -> None:
-    base = Path(".")
-    pdf_dir_path = Path(pdf_dir)
-    extra_dirs = [Path(d) for d in (extra_pdf_dirs or [])]
-
-    # Collect PDFs
-    pdf_paths: List[Path] = []
-    seen_names = set()
-    for d in [pdf_dir_path] + extra_dirs:
-        if not d.exists():
-            continue
-        for p in d.rglob("*.pdf"):
-            if p.name not in seen_names:
-                seen_names.add(p.name)
-                pdf_paths.append(p)
-    pdf_paths.sort(key=lambda p: p.name.lower())
-
-    if not pdf_paths:
-        print("No PDFs found. Nothing to do.")
+    print("[*] Fetching unprocessed publications from Supabase...")
+    pubs = fetch_unprocessed_publications(client)
+    if not pubs:
+        print("[✓] No unprocessed publications. Mapper is up-to-date.")
         return
 
-    print(f"[*] Found {len(pdf_paths)} PDFs to process.")
+    print(f"[*] {len(pubs)} publication(s) to process.")
 
-    out_csv_path = base / out_csv
-    out_json_path = base / out_json
-    out_kw_path = base / out_keyword_locations
-    out_sem_path = base / out_semantic_chunks
+    base = Path(".")
+    tmp_pdf_dir = base / "tmp_fincen_pdfs"
+    tmp_pdf_dir.mkdir(exist_ok=True)
 
-    existing_mapping = load_existing_mapping(out_csv_path)
-    existing_articles = set(existing_mapping["article_name"]) if not existing_mapping.empty else set()
-    print(f"[*] Existing mapping rows: {len(existing_articles)}")
+    # Embedding cache in a git-ignore-friendly folder
+    cache_path = base / ".cache" / "embed_cache.json"
+    embed_fn = get_embed_fn_with_cache("all-MiniLM-L6-v2", cache_path)
+    fraud_vecs = build_fraud_family_vectors(embed_fn)
 
-    # Load existing details JSON if present
-    existing_details: Dict[str, Any] = {}
-    if out_json_path.exists():
+    for idx, pub in enumerate(pubs, start=1):
+        pdf_filename = (pub.get("pdf_filename") or "").strip()
+        if not pdf_filename:
+            print(f"[{idx}/{len(pubs)}] Skipping: missing pdf_filename")
+            continue
+
+        article_name = pub.get("pdf_filename").strip()
+        fincen_id = pub.get("fincen_id")
+        title = pub.get("title")
+        date = pub.get("date")
+        doc_type = pub.get("doc_type")
+
+        print(f"\n[{idx}/{len(pubs)}] {article_name} ({doc_type})")
+
+        local_pdf_path = tmp_pdf_dir / pdf_filename
         try:
-            existing_details = json.loads(out_json_path.read_text(encoding="utf-8"))
-        except Exception:
-            existing_details = {}
-
-    # Metadata index (titles, dates, fincen_id, etc.)
-    meta_index = load_metadata_index(DEFAULT_META_CSVS)
-
-    # Embedding function + fraud vectors
-    cache_path = base / "embed_cache.json"
-    embed_fn = _get_cached_embed_fn("all-MiniLM-L6-v2", cache_path)
-    fraud_vecs = build_fraud_type_vectors(embed_fn)
-
-    # Aggregation across all docs
-    all_doc_summaries: List[DocSemanticSummary] = []
-    all_doc_details: Dict[str, Any] = dict(existing_details)
-    all_semantic_chunks: List[SemanticChunk] = []
-    all_kw_rows: List[Dict[str, Any]] = []
-
-    total = len(pdf_paths)
-    for i, pdf_path in enumerate(pdf_paths, start=1):
-        article_name = pdf_path.name
-        print(f"[*] [{i}/{total}] {article_name!r}…")
-
-        if (not force) and article_name in existing_articles and article_name in existing_details:
-            print("    -> Already processed; skipping (use --force to redo).")
+            download_pdf_from_bucket(client, pdf_filename, doc_type, local_pdf_path)
+        except Exception as e:
+            print(f"  [WARN] Failed to download {pdf_filename} from bucket: {e}")
             continue
 
-        chunks = extract_chunks_from_pdf(pdf_path)
+        try:
+            chunks = extract_chunks_from_pdf(local_pdf_path)
+        except Exception as e:
+            print(f"  [WARN] Failed to extract chunks from {pdf_filename}: {e}")
+            continue
+
+        print(f"  -> {len(chunks)} chunks")
+
         if not chunks:
-            print("    -> No text chunks extracted; skipping.")
+            print("  [WARN] No chunks extracted (even with OCR). Skipping.")
             continue
 
-        fraud_annos: List[Dict[str, Any]] = []
-        enrich_annos: List[Dict[str, Any]] = []
-
+        fraud_results: List[Tuple[List[str], Dict[str, float]]] = []
         for ch in chunks:
-            role = classify_chunk_role(ch.text)
-            ents = extract_entities_for_chunk(ch.text)
-            f_types, f_scores = tag_chunk_with_fraud_types(
-                ch.text, fraud_vecs, embed_fn
-            )
-            is_high = bool(f_types) and role in {
-                "typology_description",
-                "red_flag_indicator",
-                "sar_guidance",
-                "regulatory_requirement",
-                "case_example",
-            }
-            fraud_annos.append(
-                {
-                    "fraud_types_semantic": f_types,
-                    "fraud_scores_semantic": f_scores,
-                }
-            )
-            enrich_annos.append(
-                {
-                    "chunk_role": role,
-                    "is_high_signal": is_high,
-                    "entities": ents,
-                }
-            )
+            f_types, f_scores = tag_chunk_with_fraud_types(ch.text, fraud_vecs, embed_fn)
+            fraud_results.append((f_types, f_scores))
 
-        doc_summary, doc_details, sem_chunks = aggregate_document_level(
-            article_name, chunks, fraud_annos, enrich_annos
+        summary, sem_chunks, kw_rows = aggregate_document(
+            article_name, fincen_id, title, date, doc_type, chunks, fraud_results
         )
 
-        all_doc_summaries.append(doc_summary)
-        all_doc_details[article_name] = asdict(doc_details)
-        all_semantic_chunks.extend(sem_chunks)
+        # -------------------------
+        # Write to Supabase tables
+        # -------------------------
 
-        meta = meta_index.get(article_name, {})
-        fincen_id = meta.get("fincen_id")
-        kw_rows = build_semantic_keyword_locations(article_name, fincen_id, sem_chunks)
-        all_kw_rows.extend(kw_rows)
+        # Delete existing rows for this article (idempotent per-doc refresh)
+        client.table("fincen_fraud_mapping").delete().eq("article_name", article_name).execute()
+        client.table("fincen_semantic_chunks").delete().eq("article_name", article_name).execute()
+        client.table("fincen_keyword_locations").delete().eq("article_name", article_name).execute()
 
-        if i % 5 == 0:
-            print("    -> Saving intermediate details JSON…")
-            out_json_path.write_text(
-                json.dumps(all_doc_details, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+        # Document-level row
+        doc_row = {
+            "article_name": summary.article_name,
+            "fincen_id": summary.fincen_id,
+            "title": summary.title,
+            "date": summary.date,
+            "doc_type": summary.doc_type,
+            "primary_fraud_type_semantic": summary.primary_fraud_type_semantic,
+            "secondary_fraud_types_semantic": summary.secondary_fraud_types_semantic,
+            "fraud_mention_counts_semantic": summary.fraud_mention_counts_semantic,
+            "total_chunks": summary.total_chunks,
+        }
+        client.table("fincen_fraud_mapping").insert(doc_row).execute()
 
-    # Merge doc summaries into mapping CSV
-    new_mapping_df = pd.DataFrame([asdict(s) for s in all_doc_summaries])
-    if not existing_mapping.empty:
-        merged = existing_mapping.merge(
-            new_mapping_df,
-            on="article_name",
-            how="outer",
-            suffixes=("", "_new"),
-        )
-        for col in new_mapping_df.columns:
-            if col == "article_name":
-                continue
-            new_col = f"{col}_new"
-            if new_col in merged.columns:
-                merged[col] = merged[new_col].combine_first(merged[col])
-                merged.drop(columns=[new_col], inplace=True, errors="ignore")
-        final_mapping = merged
-    else:
-        final_mapping = new_mapping_df
+        # Chunk-level rows
+        if sem_chunks:
+            chunk_rows: List[Dict[str, Any]] = []
+            for sc in sem_chunks:
+                chunk_rows.append(
+                    {
+                        "article_name": sc.article_name,
+                        "fincen_id": sc.fincen_id,
+                        "doc_type": sc.doc_type,
+                        "page_number": sc.page_number,
+                        "chunk_index": sc.chunk_index,
+                        "x0_norm": sc.bbox[0],
+                        "y0_norm": sc.bbox[1],
+                        "x1_norm": sc.bbox[2],
+                        "y1_norm": sc.bbox[3],
+                        "text": sc.text,
+                        "is_high_signal": sc.is_high_signal,
+                        "fraud_types_semantic": sc.fraud_types_semantic,
+                        "fraud_scores_semantic": sc.fraud_scores_semantic,
+                    }
+                )
+            client.table("fincen_semantic_chunks").insert(chunk_rows).execute()
 
-    final_mapping.to_csv(out_csv_path, index=False)
-    print(f"[*] Wrote mapping CSV: {out_csv_path}")
+        # Keyword-locations rows
+        if kw_rows:
+            client.table("fincen_keyword_locations").insert(kw_rows).execute()
 
-    out_json_path.write_text(
-        json.dumps(all_doc_details, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    print(f"[*] Wrote details JSON: {out_json_path}")
+        # Mark this publication as processed
+        now_ts = datetime.now(timezone.utc).isoformat()
+        client.table("fincen_publications").update(
+            {"mapper_processed_at": now_ts}
+        ).eq("pdf_filename", pdf_filename).eq("doc_type", doc_type).execute()
 
-    sem_rows: List[Dict[str, Any]] = []
-    for ch in all_semantic_chunks:
-        sem_rows.append(
-            {
-                "article_name": ch.article_name,
-                "page_number": ch.page_number,
-                "chunk_index": ch.chunk_index,
-                "x0_norm": ch.bbox[0],
-                "y0_norm": ch.bbox[1],
-                "x1_norm": ch.bbox[2],
-                "y1_norm": ch.bbox[3],
-                "text": ch.text,
-                "chunk_role": ch.chunk_role,
-                "is_high_signal": ch.is_high_signal,
-                "fraud_types_semantic": " | ".join(ch.fraud_types_semantic),
-                "fraud_scores_semantic": json.dumps(ch.fraud_scores_semantic),
-                "countries_mentioned": " | ".join(ch.countries_mentioned),
-                "sectors_mentioned": " | ".join(ch.sectors_mentioned),
-                "channels_mentioned": " | ".join(ch.channels_mentioned),
-                "programs_mentioned": " | ".join(ch.programs_mentioned),
-                "actors_mentioned": " | ".join(ch.actors_mentioned),
-            }
-        )
+        print("  [✓] Mapper rows written and publication marked as processed.")
 
-    pd.DataFrame(sem_rows).to_csv(out_sem_path, index=False)
-    print(f"[*] Wrote semantic chunks CSV: {out_sem_path}")
-
-    if all_kw_rows:
-        kw_fieldnames = [
-            "article_name",
-            "fincen_id",
-            "fraud_type",
-            "page_number",
-            "x0_norm",
-            "y0_norm",
-            "x1_norm",
-            "y1_norm",
-        ]
-        with out_kw_path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=kw_fieldnames)
-            writer.writeheader()
-            for row in all_kw_rows:
-                writer.writerow(row)
-        print(f"[*] Wrote semantic highlight CSV: {out_kw_path}")
-    else:
-        print("[*] No high-signal fraud-type chunks found; skipping highlight CSV.")
-
-
-# ------------------------------- CLI PARSING ---------------------------------
-
-
-def _parse_args(argv: Optional[Iterable[str]] = None):
-    p = argparse.ArgumentParser(
-        description="Semantic fraud mapping over FinCEN PDFs."
-    )
-    p.add_argument("pdf_dir", help="Main directory containing FinCEN PDFs.")
-    p.add_argument("out_csv", help=f"Document-level mapping CSV (default: {OUT_DOC_CSV}).")
-    p.add_argument("out_json", help=f"Details JSON (default: {OUT_DETAILS_JSON}).")
-    p.add_argument(
-        "out_keywords",
-        help=f"Semantic highlight CSV (replacement for keyword locations; default: {OUT_KEYWORD_LOCATIONS}).",
-    )
-    p.add_argument(
-        "out_semantic",
-        help=f"Chunk-level semantic CSV (default: {OUT_SEMANTIC_CHUNKS}).",
-    )
-    p.add_argument(
-        "--extra-pdf-dir",
-        action="append",
-        default=[],
-        help="Additional directory with FinCEN PDFs (e.g., alerts, notices). May be used multiple times.",
-    )
-    p.add_argument(
-        "--force",
-        action="store_true",
-        help="Reprocess PDFs even if already present in mapping & details JSON.",
-    )
-    return p.parse_args(list(argv) if argv is not None else None)
+    print("\n[✓] Mapper complete. All new publications processed.")
 
 
 if __name__ == "__main__":
-    args = _parse_args()
-    main(
-        pdf_dir=args.pdf_dir,
-        out_csv=args.out_csv,
-        out_json=args.out_json,
-        out_keyword_locations=args.out_keywords,
-        out_semantic_chunks=args.out_semantic,
-        force=args.force,
-        extra_pdf_dirs=args.extra_pdf_dir,
-    )
+    main()
